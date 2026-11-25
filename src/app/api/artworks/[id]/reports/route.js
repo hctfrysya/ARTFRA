@@ -13,6 +13,15 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (user.role !== "member") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Hanya member yang dapat melaporkan artwork.",
+        },
+        { status: 403 }
+      );
+    }
     const { id } = await params;
     const data = await request.json();
 

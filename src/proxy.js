@@ -19,19 +19,34 @@ export async function proxy(request) {
   try {
     const { payload } = await jwtVerify(token, secret);
 
-    if (
-      pathname.startsWith("/admin") &&
-      payload.role !== "admin"
-    ) {
-      return NextResponse.redirect(new URL("/", request.url));
+    // Proteksi halaman admin
+    if (pathname.startsWith("/admin")) {
+      if (payload.role !== "admin") {
+        return NextResponse.redirect(
+          new URL("/", request.url)
+        );
+      }
     }
 
-    if (
-      pathname.startsWith("/curator/dashboard") &&
-      payload.role !== "curator" &&
-      payload.role !== "admin"
-    ) {
-      return NextResponse.redirect(new URL("/", request.url));
+    // Proteksi dashboard curator
+    if (pathname.startsWith("/curator/dashboard")) {
+      if (
+        payload.role !== "curator" &&
+        payload.role !== "admin"
+      ) {
+        return NextResponse.redirect(
+          new URL("/", request.url)
+        );
+      }
+
+      if (
+        payload.role === "curator" &&
+        payload.curator_status !== "approved"
+      ) {
+        return NextResponse.redirect(
+          new URL("/curator/pending", request.url)
+        );
+      }
     }
 
     return NextResponse.next();

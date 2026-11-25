@@ -5,7 +5,8 @@ import { pool } from "@/lib/db";
 
 // Menyetujui atau menolak pengajuan curator
 export async function PATCH(request, { params }) {
-  const client = await pool.connect();
+  let client;
+  let transactionStarted = false;
 
   try {
     const admin = await requireRole("admin");
@@ -18,8 +19,7 @@ export async function PATCH(request, { params }) {
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { status } = body;
+    const { status } = await request.json();
 
     if (!["approved", "rejected"].includes(status)) {
       return NextResponse.json(
@@ -28,7 +28,10 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    client = await pool.connect();
+
     await client.query("BEGIN");
+    transactionStarted = true;
 
     const applicationResult = await client.query(
       `SELECT id, user_id, status
@@ -40,6 +43,7 @@ export async function PATCH(request, { params }) {
 
     if (applicationResult.rows.length === 0) {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return NextResponse.json(
         { success: false, message: "Pengajuan tidak ditemukan." },
@@ -51,6 +55,7 @@ export async function PATCH(request, { params }) {
 
     if (application.status !== "pending") {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return NextResponse.json(
         { success: false, message: "Pengajuan sudah pernah ditinjau." },
@@ -71,9 +76,13 @@ export async function PATCH(request, { params }) {
       !userResult.rows[0].is_active
     ) {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return NextResponse.json(
-        { success: false, message: "Akun pemohon tidak aktif atau tidak ditemukan." },
+        {
+          success: false,
+          message: "Akun pemohon tidak aktif atau tidak ditemukan.",
+        },
         { status: 400 }
       );
     }
@@ -100,7 +109,6 @@ export async function PATCH(request, { params }) {
       ]
     );
 
-    // Membuat notifikasi untuk pemohon
     const message =
       status === "approved"
         ? "Selamat! Pengajuan curator kamu telah disetujui. Sekarang kamu dapat membuat challenge."
@@ -118,6 +126,7 @@ export async function PATCH(request, { params }) {
     );
 
     await client.query("COMMIT");
+    transactionStarted = false;
 
     return NextResponse.json({
       success: true,
@@ -131,17 +140,27 @@ export async function PATCH(request, { params }) {
         status,
       },
     });
-
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (client && transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("Rollback error:", rollbackError);
+      }
+    }
 
     console.error("Review curator application error:", error);
 
     return NextResponse.json(
-      { success: false, message: "Gagal memproses pengajuan curator." },
+      {
+        success: false,
+        message: "Gagal memproses pengajuan curator.",
+      },
       { status: 500 }
     );
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }

@@ -13,6 +13,16 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (user.role !== "member") {
+        return NextResponse.json(
+            {
+                success: false,
+                message: "Fitur ini hanya dapat digunakan oleh member.",
+            },
+            { status: 403 }
+        );
+    }
+
     const { id } = await params;
 
     const artwork = await pool.query(

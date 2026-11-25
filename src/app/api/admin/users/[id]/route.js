@@ -19,20 +19,10 @@ export async function GET(request, { params }) {
 
     const result = await pool.query(
       `SELECT
-        id,
-        username,
-        display_name,
-        email,
-        role,
-        curator_status,
-        avatar_url,
-        bio,
-        website_url,
-        instagram_url,
-        behance_url,
-        is_active,
-        created_at,
-        updated_at
+        id, username, display_name, email, role,
+        curator_status, avatar_url, bio,
+        website_url, instagram_url, behance_url,
+        is_active, created_at, updated_at
        FROM users
        WHERE id = $1`,
       [id]
@@ -59,8 +49,7 @@ export async function GET(request, { params }) {
   }
 }
 
-
-// Mengubah role pengguna (khusus admin)
+// Mengubah role dan status akun pengguna
 export async function PATCH(request, { params }) {
   try {
     const admin = await requireRole("admin");
@@ -83,59 +72,77 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (is_active !== undefined && typeof is_active !== "boolean") {
-        return NextResponse.json(
-            { success: false, message: "Status akun tidak valid." },
-            { status: 400 }
-        );
+    if (
+      is_active !== undefined &&
+      typeof is_active !== "boolean"
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Status akun tidak valid." },
+        { status: 400 }
+      );
     }
 
     if (String(admin.id) === String(id)) {
       return NextResponse.json(
-        { success: false, message: "Admin tidak dapat mengubah role sendiri." },
+        { success: false, message: "Admin tidak dapat mengubah akun sendiri." },
         { status: 403 }
       );
     }
 
-    const result = await pool.query(
-        `UPDATE users
-         SET role = $1::varchar,
-            curator_status = CASE
-                WHEN $1::varchar = 'member'::varchar THEN NULL
-                WHEN users.role <> 'curator' THEN 'pending'
-                ELSE users.curator_status
-            END,
-            is_active = COALESCE($2, is_active),
-            updated_at = CURRENT_TIMESTAMP
-         WHERE id = $3
-         RETURNING id, username, display_name, role, curator_status, is_active`,
-        [role, is_active ?? null, id]
+    const targetUser = await pool.query(
+      "SELECT id, role FROM users WHERE id = $1",
+      [id]
     );
 
-    if (result.rows.length === 0) {
+    if (targetUser.rows.length === 0) {
       return NextResponse.json(
         { success: false, message: "Pengguna tidak ditemukan." },
         { status: 404 }
       );
     }
 
+    if (targetUser.rows[0].role === "admin") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Role admin tidak dapat diubah melalui fitur ini.",
+        },
+        { status: 403 }
+      );
+    }
+
+    const result = await pool.query(
+      `UPDATE users
+       SET role = $1,
+           curator_status = CASE
+             WHEN $1 = 'member' THEN NULL
+             WHEN users.role <> 'curator' THEN 'pending'
+             ELSE users.curator_status
+           END,
+           is_active = COALESCE($2, is_active),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING id, username, display_name,
+                 role, curator_status, is_active`,
+      [role, is_active ?? null, id]
+    );
+
     return NextResponse.json({
       success: true,
-      message: "Role pengguna berhasil diperbarui.",
+      message: "Pengguna berhasil diperbarui.",
       user: result.rows[0],
     });
   } catch (error) {
     console.error("Update user role error:", error);
 
     return NextResponse.json(
-      { success: false, message: "Gagal mengubah role pengguna." },
+      { success: false, message: "Gagal mengubah data pengguna." },
       { status: 500 }
     );
   }
 }
 
-
-// Menghapus pengguna (khusus admin)
+// Menonaktifkan akun pengguna
 export async function DELETE(request, { params }) {
   try {
     const admin = await requireRole("admin");
@@ -149,10 +156,35 @@ export async function DELETE(request, { params }) {
 
     const { id } = await params;
 
-    if (Number(id) === admin.id) {
+    if (String(id) === String(admin.id)) {
       return NextResponse.json(
-        { success: false, message: "Admin tidak dapat menonaktifkan akunnya sendiri." },
+        {
+          success: false,
+          message: "Admin tidak dapat menonaktifkan akunnya sendiri.",
+        },
         { status: 400 }
+      );
+    }
+
+    const targetUser = await pool.query(
+      "SELECT id, role FROM users WHERE id = $1",
+      [id]
+    );
+
+    if (targetUser.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Pengguna tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
+    if (targetUser.rows[0].role === "admin") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Akun admin lain tidak dapat dinonaktifkan.",
+        },
+        { status: 403 }
       );
     }
 
@@ -164,13 +196,6 @@ export async function DELETE(request, { params }) {
        RETURNING id, username, display_name, is_active`,
       [id]
     );
-
-    if (result.rows.length === 0) {
-      return NextResponse.json(
-        { success: false, message: "User tidak ditemukan." },
-        { status: 404 }
-      );
-    }
 
     return NextResponse.json({
       success: true,

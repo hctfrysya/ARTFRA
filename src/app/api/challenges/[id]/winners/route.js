@@ -71,11 +71,13 @@ export async function POST(request, { params }) {
       }
 
       const submission = await client.query(
-        `SELECT id, member_id
-         FROM challenge_submissions
-         WHERE id = $1
-         AND challenge_id = $2
-         AND withdrawn_at IS NULL`,
+        `SELECT cs.id, cs.member_id
+        FROM challenge_submissions cs
+        JOIN artworks a ON cs.artwork_id = a.id
+        WHERE cs.id = $1
+        AND cs.challenge_id = $2
+        AND cs.withdrawn_at IS NULL
+        AND a.is_hidden = FALSE`,
         [submission_id, id]
       );
 

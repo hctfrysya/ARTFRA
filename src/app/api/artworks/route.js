@@ -64,14 +64,14 @@ export async function POST(request) {
       );
     }
 
-    if (
-      user.role === "curator" &&
-      user.curator_status !== "approved"
-    ) {
-      return NextResponse.json(
-        { success: false, message: "Akun curator belum disetujui." },
-        { status: 403 }
-      );
+    if (user.role !== "member") {
+        return NextResponse.json(
+            {
+                success: false,
+                message: "Hanya member yang dapat mengunggah artwork.",
+            },
+            { status: 403 }
+        );
     }
 
     const formData = await request.formData();

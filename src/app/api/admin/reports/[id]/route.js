@@ -4,7 +4,8 @@ import { requireRole } from "@/lib/auth";
 import { pool } from "@/lib/db";
 
 export async function PATCH(request, { params }) {
-  const client = await pool.connect();
+  let client;
+  let transactionStarted = false;
 
   try {
     const admin = await requireRole("admin");
@@ -17,8 +18,7 @@ export async function PATCH(request, { params }) {
     }
 
     const { id } = await params;
-    const body = await request.json();
-    const { status } = body;
+    const { status } = await request.json();
 
     if (!["dismissed", "taken_down"].includes(status)) {
       return NextResponse.json(
@@ -27,7 +27,10 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    client = await pool.connect();
+
     await client.query("BEGIN");
+    transactionStarted = true;
 
     const report = await client.query(
       `SELECT id, artwork_id, status
@@ -39,6 +42,7 @@ export async function PATCH(request, { params }) {
 
     if (report.rows.length === 0) {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return NextResponse.json(
         { success: false, message: "Laporan tidak ditemukan." },
@@ -48,6 +52,7 @@ export async function PATCH(request, { params }) {
 
     if (report.rows[0].status !== "pending") {
       await client.query("ROLLBACK");
+      transactionStarted = false;
 
       return NextResponse.json(
         { success: false, message: "Laporan sudah ditangani." },
@@ -58,14 +63,14 @@ export async function PATCH(request, { params }) {
     const artworkId = report.rows[0].artwork_id;
 
     if (status === "taken_down") {
-        await client.query(
-            `UPDATE artworks
-            SET is_hidden = TRUE,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $1`,
-            [artworkId]
-        );
-  }
+      await client.query(
+        `UPDATE artworks
+         SET is_hidden = TRUE,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [artworkId]
+      );
+    }
 
     const result = await client.query(
       `UPDATE artwork_reports
@@ -78,17 +83,24 @@ export async function PATCH(request, { params }) {
     );
 
     await client.query("COMMIT");
+    transactionStarted = false;
 
     return NextResponse.json({
       success: true,
-      message: status === "dismissed"
-        ? "Laporan berhasil ditolak."
-        : "Laporan ditangani dan karya diturunkan.",
+      message:
+        status === "dismissed"
+          ? "Laporan berhasil ditolak."
+          : "Laporan ditangani dan karya diturunkan.",
       report: result.rows[0],
     });
-
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (client && transactionStarted) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("Rollback error:", rollbackError);
+      }
+    }
 
     console.error("Handle report error:", error);
 
@@ -96,8 +108,9 @@ export async function PATCH(request, { params }) {
       { success: false, message: "Gagal menangani laporan." },
       { status: 500 }
     );
-
   } finally {
-    client.release();
+    if (client) {
+      client.release();
+    }
   }
 }
