@@ -26,7 +26,7 @@ export default function ArtworkCard({ artwork }) {
         </h3>
 
         <p className="mt-1 text-sm text-[#777]">
-          {artwork.creator_name || "Unknown Creator"}
+           {artwork.display_name ||artwork.username || "Unknown Creator"}
         </p>
       </div>
     </Link>
