@@ -118,7 +118,7 @@ export default function Navbar() {
 
               <Link
                 href="/register"
-                className="rounded-full bg-[#202020] px-5 py-2.5 text-sm text-white transition hover:bg-[#444]"
+                className="rounded-full bg-[#202020] px-5 py-2.5 text-sm !text-white transition hover:bg-[#444]"
               >
                 Join Us
               </Link>
