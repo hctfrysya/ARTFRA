@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { pool } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
+
 // GET profil user
 export async function GET() {
   try {
@@ -14,9 +15,25 @@ export async function GET() {
       );
     }
 
+    const result = await pool.query(
+      `SELECT id, username, display_name, email, role,
+              curator_status, avatar_url, bio,
+              website_url, instagram_url, behance_url
+       FROM users
+       WHERE id = $1`,
+      [user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return NextResponse.json(
+        { success: false, message: "Profil tidak ditemukan." },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      profile: user,
+      profile: result.rows[0],
     });
   } catch (error) {
     console.error("Get profile error:", error);

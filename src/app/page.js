@@ -38,39 +38,6 @@ export default function Home() {
   return (
     <main className="min-h-screen">
 
-      {/* NAVBAR */}
-      <header className="border-b border-[#e5e5e1]">
-        <nav className="mx-auto flex max-w-[1440px] items-center justify-between px-6 py-5 md:px-12">
-
-          <Link href="/" className="font-heading text-2xl font-extrabold tracking-[-1.5px]">
-            ARTFR<span className="text-[#92928d]">A.</span>
-          </Link>
-
-          <div className="hidden items-center gap-9 text-sm text-[#555] md:flex">
-            <Link href="/" className="text-black">Discover</Link>
-            <Link href="/artworks" className="hover:text-black">Explore Art</Link>
-            <Link href="/challenges" className="hover:text-black">Challenges</Link>
-            <Link href="/profile" className="hover:text-black">Creators</Link>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden px-4 py-2 text-sm md:block"
-            >
-              Log in
-            </Link>
-
-            <Link
-              href="/register"
-              className="rounded-full bg-[#202020] px-5 py-2.5 text-sm text-white transition hover:bg-[#444]"
-            >
-              Join ARTFRА
-            </Link>
-          </div>
-        </nav>
-      </header>
-
       {/* HERO */}
       <section className="mx-auto grid max-w-[1440px] items-center gap-12 px-6 py-20 md:grid-cols-2 md:px-12 md:py-28">
 
@@ -97,7 +64,7 @@ export default function Home() {
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
               href="/artworks"
-              className="rounded-full bg-[#202020] px-7 py-4 text-sm text-white transition hover:bg-[#444]"
+              className="rounded-full bg-[#202020] px-7 py-4 text-sm !text-white transition hover:bg-[#444]"
             >
               Explore artworks ↗
             </Link>
@@ -234,33 +201,6 @@ export default function Home() {
           ))}
         </div>
       </section>
-
-      {/* FOOTER */}
-      <footer className="bg-[#202020] px-6 py-12 text-white md:px-12">
-        <div className="mx-auto flex max-w-[1440px] flex-col justify-between gap-10 md:flex-row">
-
-          <div>
-            <h2 className="font-heading text-3xl font-extrabold tracking-[-2px]">
-              ARTFRA.
-            </h2>
-            <p className="mt-3 max-w-xs text-sm leading-7 text-[#aaa]">
-              A creative space to discover, share,
-              and celebrate digital art.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-8 text-sm text-[#ccc]">
-            <Link href="/artworks">Explore Art</Link>
-            <Link href="/challenges">Challenges</Link>
-            <Link href="/login">Login</Link>
-            <Link href="/register">Join Us</Link>
-          </div>
-        </div>
-
-        <div className="mx-auto mt-12 max-w-[1440px] border-t border-white/15 pt-6 text-xs text-[#888]">
-          © 2026 ARTFRA. All rights reserved.
-        </div>
-      </footer>
 
     </main>
   );
